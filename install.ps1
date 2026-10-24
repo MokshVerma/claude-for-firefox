@@ -462,9 +462,17 @@ function Main {
     Write-Ok "Extension directory: $ExtDir"
 
     # Copy extension files if available
-    $scriptDir = Split-Path -Parent $MyInvocation.ScriptName
+    $scriptDir = $PSScriptRoot
+    if (-not $scriptDir) { $scriptDir = Split-Path -Parent $PSCommandPath }
     $srcExtDir = Join-Path $scriptDir 'extension'
-    if (Test-Path $srcExtDir) {
+    if (Test-Path (Join-Path $scriptDir 'manifest.json')) {
+        # Installer is inside the extension directory: copy everything except installer/dev files
+        $exclude = @('install.sh', 'install.ps1', '.git', '.DS_Store', 'node_modules', 'web-ext-artifacts', 'firefox-injected-tokens.json')
+        Get-ChildItem -LiteralPath $scriptDir -Force |
+            Where-Object { $exclude -notcontains $_.Name } |
+            Copy-Item -Destination $ExtDir -Recurse -Force
+        Write-Ok "Extension files copied to $ExtDir"
+    } elseif (Test-Path $srcExtDir) {
         Copy-Item -Path "$srcExtDir\*" -Destination $ExtDir -Recurse -Force
         Write-Ok "Extension files copied to $ExtDir"
     } else {
